@@ -220,12 +220,12 @@ def check_price_changes():
 
 def job():
     if not BOT_TOKEN or not CHANNEL_ID:
-        print("خطا: توکن ربات یا شناسه کانال مشخص نشده است.")
-        return  # اجرای کد متوقف می‌شود اگر توکن یا شناسه کانال وجود نداشته باشد
+        print("خطا: توکن بات یا شناسه کانال تنظیم نشده‌اند.")
+        return
 
-    # گرفتن اخبار از RSS
-    news = get_news_from_rss()
-    for item in news:
+    items = get_news_from_rss()
+
+    for item in items:
         title = item["title"]
         link = item["link"]
         if link in load_seen():
@@ -236,6 +236,10 @@ def job():
 
         summary = extract_summary_from_url(link)
         img_url = extract_image_from_url(link)
+        # ترجمه به فارسی
+        title = translate_to_persian(title)
+        summary = translate_to_persian(summary)
+
         send_telegram_message_with_image(f"<b>{title}</b>\n{summary}\n\n<a href='{link}'>بیشتر بخوانید</a>", img_url)
 
     # بررسی تغییرات قیمت ارزها
