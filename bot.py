@@ -226,8 +226,14 @@ def job():
     # گرفتن اخبار از RSS
     news = get_news_from_rss()
     for item in news:
-        title = item['title']
-        link = item['link']
+        title = item["title"]
+        link = item["link"]
+        if link in load_seen():
+            continue  # اگر خبر قبلا دیده شده، ادامه می‌دهیم
+        seen = load_seen()
+        seen.add(link)
+        save_seen(seen)
+
         summary = extract_summary_from_url(link)
         img_url = extract_image_from_url(link)
         send_telegram_message_with_image(f"<b>{title}</b>\n{summary}\n\n<a href='{link}'>بیشتر بخوانید</a>", img_url)
