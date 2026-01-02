@@ -200,14 +200,18 @@ def check_price_changes():
         saved_prices[coin]['last_check_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     save_prices(saved_prices)
+
 def job():
     if not BOT_TOKEN or not CHANNEL_ID:
         print("خطا: توکن ربات یا شناسه کانال مشخص نشده است.")
         return  # اجرای کد متوقف می‌شود اگر توکن یا شناسه کانال وجود نداشته باشد
 
-    # باقی کدهای مربوط به اجرای ربات
+    # بارگذاری لینک‌های ارسال‌شده قبلی
     seen = load_seen()
+
+    # دریافت اخبار از RSS
     news = get_news_from_rss()
+    
     for entry in news:
         title = entry["title"]
         link = entry["link"]
@@ -238,4 +242,3 @@ def job():
 while True:
     job()
     time.sleep(1800)  # اجرای هر 30 دقیقه یک‌بار
-
