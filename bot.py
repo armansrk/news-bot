@@ -5,6 +5,7 @@ import feedparser
 from googletrans import Translator
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+import re
 
 # تنظیمات
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -130,15 +131,19 @@ def job():
         if url in seen:  # اگر خبر قبلاً ارسال شده، ادامه بده
             continue
 
+        # استخراج خلاصه از URL
         summary = extract_summary_from_url(url)
         translated_summary = translate_to_persian(summary)
 
         # استخراج تصویر از خبر
         img_url = extract_image_from_url(url)
 
+        # ترجمه تیتر
+        translated_title = translate_to_persian(title)
+
         # ارسال پیام به تلگرام همراه با تصویر
         message = (
-            f"🔹 <b>{title}</b>\n\n"
+            f"🔹 <b>{translated_title}</b>\n\n"
             f"{translated_summary}"
         )
 
