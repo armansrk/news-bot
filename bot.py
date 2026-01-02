@@ -121,9 +121,12 @@ def send_telegram_message_with_image(text: str, img_url: str):
         "caption": text,
         "parse_mode": "HTML"
     }
-    files = {"photo": requests.get(img_url).content} if img_url else {}
-    r = requests.post(api_url, data=payload, files=files, timeout=20)
-    r.raise_for_status()
+    try:
+        files = {"photo": requests.get(img_url).content} if img_url else {}
+        r = requests.post(api_url, data=payload, files=files, timeout=20)
+        r.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"خطا در ارسال پیام به تلگرام: {e}")
 
 # دریافت قیمت فعلی ارزها از API
 def get_current_prices():
@@ -235,3 +238,8 @@ def job():
     check_price_changes()
 
     # زمان انتظار قبل از اجرای دوباره
+    time.sleep(1800)  # 30 دقیقه انتظار
+
+if __name__ == "__main__":
+    while True:
+        job()
