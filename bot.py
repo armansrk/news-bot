@@ -6,12 +6,19 @@ from googletrans import Translator
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
+import json
+from datetime import datetime, timedelta
 
 # تنظیمات
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 SEEN_FILE = "seen.txt"
+prices_file = "prices.json"
 
+# ارزهای دیجیتال برای نظارت
+COINS = ['bitcoin', 'ethereum', 'binancecoin', 'cardano', 'solana', 'ripple', 'polkadot', 'dogecoin', 'litecoin', 'uniswap']
+
+# RSS Feeds برای اخبار ارز دیجیتال
 RSS_FEEDS = [
     "https://arzdigital.com/feed/",
     "https://www.coindesk.com/feed/",
@@ -19,6 +26,9 @@ RSS_FEEDS = [
     "https://cryptoslate.com/feed/",
     "https://decrypt.co/feed",
 ]
+
+# URL API کوین گکو برای دریافت قیمت
+API_URL = "https://api.coingecko.com/api/v3/simple/price?ids={}&vs_currencies=usd"
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (NewsBot)"}
 
@@ -115,11 +125,78 @@ def send_telegram_message_with_image(text: str, img_url: str):
     r = requests.post(api_url, data=payload, files=files, timeout=20)
     r.raise_for_status()
 
+# دریافت قیمت فعلی ارزها از API
+def get_current_prices():
+    ids = ",".join(COINS)
+    response = requests.get(API_URL.format(ids))
+    return response.json()
+
+# بارگذاری قیمت‌ها از فایل
+def load_prices():
+    if os.path.exists(prices_file):
+        with open(prices_file, 'r') as file:
+            return json.load(file)
+    return {}
+
+# ذخیره قیمت‌ها به فایل
+def save_prices(prices):
+    with open(prices_file, 'w') as file:
+        json.dump(prices, file)
+
+# محاسبه تغییرات قیمت
+def calculate_price_change(old_price, new_price):
+    return ((new_price - old_price) / old_price) * 100
+
+# بررسی تغییرات قیمت ارزها
+def check_price_changes():
+    current_prices = get_current_prices()
+    saved_prices = load_prices()
+    
+    for coin in COINS:
+        if coin not in current_prices:
+            continue
+        current_price = current_prices[coin]['usd']
+        
+        if coin not in saved_prices:
+            saved_prices[coin] = {
+                'last_price': current_price,
+                'last_check_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            continue
+        
+        last_price = saved_prices[coin]['last_price']
+        last_check_time = datetime.strptime(saved_prices[coin]['last_check_time'], "%Y-%m-%d %H:%M:%S")
+        
+        # محاسبه تغییر قیمت در 4 ساعت گذشته
+        time_diff = datetime.now() - last_check_time
+        price_change_percentage = calculate_price_change(last_price, current_price)
+
+        # اگر تغییر قیمت بیش از 5 درصد در 4 ساعت باشد
+        if time_diff < timedelta(hours=4) and abs(price_change_percentage) >= 5:
+            send_telegram_message_with_image(f"🔹 تغییر قیمت {coin} بیشتر از 5 درصد در 4 ساعت اخیر!\n\n"
+                                  f"قیمت قبلی: ${last_price}\n"
+                                  f"قیمت جدید: ${current_price}\n"
+                                  f"تغییر: {price_change_percentage:.2f}%", "")
+
+        # اگر تغییر قیمت بیشتر از 10 درصد در یک روز باشد
+        if time_diff >= timedelta(days=1) and abs(price_change_percentage) >= 10:
+            send_telegram_message_with_image(f"🔹 تغییر قیمت {coin} بیشتر از 10 درصد در 24 ساعت اخیر!\n\n"
+                                  f"قیمت قبلی: ${last_price}\n"
+                                  f"قیمت جدید: ${current_price}\n"
+                                  f"تغییر: {price_change_percentage:.2f}%", "")
+
+        # بروزرسانی اطلاعات قیمت و زمان
+        saved_prices[coin]['last_price'] = current_price
+        saved_prices[coin]['last_check_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    save_prices(saved_prices)
+
 # اجرای ربات
 def job():
     if not BOT_TOKEN or not CHANNEL_ID:
         raise RuntimeError("BOT_TOKEN و CHANNEL_ID را در GitHub Secrets ست کن.")
-
+    
+    # دریافت اخبار
     seen = load_seen()
     news = get_news_from_rss()
 
@@ -131,37 +208,30 @@ def job():
 
         if url in seen:  # اگر خبر قبلاً ارسال شده، ادامه بده
             print("خبر قبلاً ارسال شده است.")
-            return
+        else:
+            # استخراج خلاصه از URL
+            summary = extract_summary_from_url(url)
+            translated_summary = translate_to_persian(summary)
 
-        # استخراج خلاصه از URL
-        summary = extract_summary_from_url(url)
-        translated_summary = translate_to_persian(summary)
+            # استخراج تصویر از خبر
+            img_url = extract_image_from_url(url)
 
-        # استخراج تصویر از خبر
-        img_url = extract_image_from_url(url)
+            # ترجمه تیتر
+            translated_title = translate_to_persian(title)
 
-        # ترجمه تیتر
-        translated_title = translate_to_persian(title)
+            # ارسال پیام به تلگرام همراه با تصویر
+            message = (
+                f"🔹 <b>{translated_title}</b>\n\n"
+                f"{translated_summary}"
+            )
 
-        # ارسال پیام به تلگرام همراه با تصویر
-        message = (
-            f"🔹 <b>{translated_title}</b>\n\n"
-            f"{translated_summary}"
-        )
+            send_telegram_message_with_image(message, img_url)
+            seen.add(url)  # ذخیره URL برای جلوگیری از تکرار در آینده
+            save_seen(seen)
 
-        send_telegram_message_with_image(message, img_url)
-        seen.add(url)  # ذخیره URL برای جلوگیری از تکرار در آینده
-        save_seen(seen)
+            print("✅ خبر ارسال شد")
+    
+    # بررسی تغییرات قیمت
+    check_price_changes()
 
-        print("✅ خبر ارسال شد")
-
-    else:
-        print("خبر جدیدی برای ارسال وجود ندارد.")
-
-    # زمان انتظار قبل از اجرای دوباره ربات (مثلاً نیم ساعت)
-    time.sleep(1800)  # 1800 ثانیه معادل 30 دقیقه
-
-# اجرا
-if __name__ == "__main__":
-    while True:  # این بخش باعث می‌شود ربات به طور مداوم اجرا شود
-        job()
+    # زمان انتظار قبل از اجرای دوباره
