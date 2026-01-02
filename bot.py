@@ -2,7 +2,6 @@ import os
 import time
 import requests
 import feedparser
-from googletrans import Translator
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
@@ -18,13 +17,18 @@ prices_file = "prices.json"
 # ارزهای دیجیتال برای نظارت
 COINS = ['bitcoin', 'ethereum', 'binancecoin', 'cardano', 'solana', 'ripple', 'polkadot', 'dogecoin', 'litecoin', 'uniswap']
 
-# RSS Feeds برای اخبار ارز دیجیتال
+# RSS Feeds برای اخبار ارز دیجیتال ایرانی
 RSS_FEEDS = [
-    "https://arzdigital.com/feed/",
-    "https://www.coindesk.com/feed/",
-    "https://cointelegraph.com/rss",
-    "https://cryptoslate.com/feed/",
-    "https://decrypt.co/feed",
+    "https://www.arzdigital.com/feed/",  # ارز دیجیتال
+    "https://nobitex.ir/blog/feed/",  # نوبیتکس
+    "https://www.valex.ir/blog/feed/",  # والکس
+    "https://www.bitpin.ir/blog/feed/",  # بیت پین
+    "https://www.bitcoinnews.ir/feed/",  # بیت کوین نیوز
+    "https://www.coiniran.com/feed/",  # کوین ایران
+    "https://www.cryptopress.ir/feed/",  # کریپتوپرس
+    "https://www.tether.com/feed/",  # تتر
+    "https://www.mellatcrypto.com/feed/",  # ملت کریپتو
+    "https://www.farscrypto.com/feed/",  # فارس کریپتو
 ]
 
 # URL API کوین گکو برای دریافت قیمت
@@ -37,27 +41,7 @@ def translate_to_persian(text: str) -> str:
     translator = Translator()
     translated = translator.translate(text, src='en', dest='fa')
     translated_text = translated.text
-
-    # چک کردن ترجمه (اختیاری: اصلاحات جزیی در ترجمه)
-    corrected_translation = check_translation_accuracy(translated_text)
-    return corrected_translation
-
-def check_translation_accuracy(text: str) -> str:
-    """
-    این تابع به طور ساده ترجمه را از نظر معنایی و دستوری چک می‌کند.
-    شما می‌توانید اینجا قواعد خاص خود را برای اصلاحات اعمال کنید.
-    """
-    # برای مثال بررسی جملات معمولی و اصلاحات کوچک
-    corrections = {
-        "not": "نه",
-        "this is": "این است",
-        # به این صورت می‌توانید اصلاحات دیگری را هم اضافه کنید
-    }
-
-    for wrong, correct in corrections.items():
-        text = text.replace(wrong, correct)
-    
-    return text
+    return translated_text
 
 # خواندن/نوشتن seen.txt
 def load_seen() -> set:
