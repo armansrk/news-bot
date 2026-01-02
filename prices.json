@@ -1,0 +1,11 @@
+{
+  "bitcoin": {
+    "last_price": 50000,
+    "last_check_time": "2026-01-02 12:00:00"
+  },
+  "ethereum": {
+    "last_price": 4000,
+    "last_check_time": "2026-01-02 12:00:00"
+  },
+  ...
+}
