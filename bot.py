@@ -17,7 +17,6 @@ COINS = [
     "ETF", "SEC"
 ]
 
-# RSS منابع (می‌تونی بعداً بیشترش کنی)
 RSS_FEEDS = [
     "https://arzdigital.com/feed/",
 ]
@@ -89,7 +88,7 @@ def get_news_from_rss():
     return items
 
 
-# ================== ارسال پیام به تلگرام (HTTP API) ==================
+# ================== ارسال پیام به تلگرام ==================
 def send_telegram_message(html_text: str):
     api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
@@ -115,7 +114,6 @@ def job():
         url = item["link"]
         title = item["title"]
 
-        # حذف تکراری‌ها
         if url in seen:
             continue
 
@@ -130,12 +128,12 @@ def job():
         send_telegram_message(message)
         seen.add(url)
         sent += 1
-        time.sleep(1)  # ضد محدودیت تلگرام
+        time.sleep(1)
 
     save_seen(seen)
     print(f"✅ {sent} خبر ارسال شد (بدون تکرار)")
 
 
-# ✅ این بخش دقیقاً همونیه که باید باشه
+# 🔴 خیلی مهم: فقط و فقط همین خط باید باشد
 if name == "main":
     job()
