@@ -1,50 +1,49 @@
 import os
-import re
 import time
 import requests
 import feedparser
+from googletrans import Translator
 from bs4 import BeautifulSoup
 
-# ================== تنظیمات ==================
+# تنظیمات
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 SEEN_FILE = "seen.txt"
 
-COINS = [
-    "بیت کوین", "اتریوم", "دوج", "ریپل", "کاردانو", "سولانا",
-    "شیبا", "پولکادات", "بیت کوین کش",
-    "Bitcoin", "BTC", "Ethereum", "ETH", "XRP", "SOL", "DOGE", "ADA",
-    "ETF", "SEC"
-]
-
 RSS_FEEDS = [
     "https://arzdigital.com/feed/",
+    "https://www.coindesk.com/feed/",
+    "https://cointelegraph.com/rss",
+    "https://cryptoslate.com/feed/",
+    "https://decrypt.co/feed",
 ]
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (NewsBot)"}
 
+# ترجمه به فارسی
+def translate_to_persian(text: str) -> str:
+    translator = Translator()
+    translated = translator.translate(text, src='en', dest='fa')
+    return translated.text
 
-# ================== خواندن/نوشتن seen.txt ==================
+# خواندن/نوشتن seen.txt
 def load_seen() -> set:
     if not os.path.exists(SEEN_FILE):
         return set()
     with open(SEEN_FILE, "r", encoding="utf-8") as f:
         return set(line.strip() for line in f if line.strip())
 
-
 def save_seen(seen: set):
     with open(SEEN_FILE, "w", encoding="utf-8") as f:
         for url in sorted(seen):
             f.write(url + "\n")
 
-
-# ================== فیلتر کلیدواژه ==================
+# فیلتر کلیدواژه
 def matches_keywords(title: str) -> bool:
     t = (title or "").lower()
     return any(k.lower() in t for k in COINS)
 
-
-# ================== خلاصه‌سازی ساده ==================
+# استخراج خلاصه از URL
 def extract_summary_from_url(url: str, max_chars: int = 420) -> str:
     try:
         r = requests.get(url, headers=HEADERS, timeout=20)
@@ -69,8 +68,7 @@ def extract_summary_from_url(url: str, max_chars: int = 420) -> str:
     except Exception:
         return "خلاصه در دسترس نیست."
 
-
-# ================== گرفتن خبر از RSS ==================
+# گرفتن اخبار از RSS
 def get_news_from_rss():
     items = []
     for feed_url in RSS_FEEDS:
@@ -87,8 +85,7 @@ def get_news_from_rss():
             continue
     return items
 
-
-# ================== ارسال پیام به تلگرام ==================
+# ارسال پیام به تلگرام
 def send_telegram_message(html_text: str):
     api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
@@ -100,8 +97,7 @@ def send_telegram_message(html_text: str):
     r = requests.post(api_url, json=payload, timeout=20)
     r.raise_for_status()
 
-
-# ================== اجرای ربات ==================
+# اجرای ربات
 def job():
     if not BOT_TOKEN or not CHANNEL_ID:
         raise RuntimeError("BOT_TOKEN و CHANNEL_ID را در GitHub Secrets ست کن.")
@@ -118,10 +114,11 @@ def job():
             continue
 
         summary = extract_summary_from_url(url)
+        translated_summary = translate_to_persian(summary)
 
         message = (
             f"🔹 <b>{title}</b>\n\n"
-            f"{summary}\n\n"
+            f"{translated_summary}\n\n"
             f"🔗 <a href='{url}'>ادامه خبر</a>"
         )
 
@@ -133,7 +130,6 @@ def job():
     save_seen(seen)
     print(f"✅ {sent} خبر ارسال شد (بدون تکرار)")
 
-
-# 🔴 خیلی مهم: فقط و فقط همین خط باید باشد
+# اجرا
 if __name__ == "__main__":
     job()
