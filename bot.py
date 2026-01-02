@@ -2,6 +2,7 @@ import os
 import time
 import requests
 import feedparser
+from googletrans import Translator
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
@@ -17,18 +18,13 @@ prices_file = "prices.json"
 # ارزهای دیجیتال برای نظارت
 COINS = ['bitcoin', 'ethereum', 'binancecoin', 'cardano', 'solana', 'ripple', 'polkadot', 'dogecoin', 'litecoin', 'uniswap']
 
-# RSS Feeds برای اخبار ارز دیجیتال ایرانی
+# RSS Feeds برای اخبار ارز دیجیتال
 RSS_FEEDS = [
-    "https://www.arzdigital.com/feed/",  # ارز دیجیتال
-    "https://nobitex.ir/blog/feed/",  # نوبیتکس
-    "https://www.valex.ir/blog/feed/",  # والکس
-    "https://www.bitpin.ir/blog/feed/",  # بیت پین
-    "https://www.bitcoinnews.ir/feed/",  # بیت کوین نیوز
-    "https://www.coiniran.com/feed/",  # کوین ایران
-    "https://www.cryptopress.ir/feed/",  # کریپتوپرس
-    "https://www.tether.com/feed/",  # تتر
-    "https://www.mellatcrypto.com/feed/",  # ملت کریپتو
-    "https://www.farscrypto.com/feed/",  # فارس کریپتو
+    "https://arzdigital.com/feed/",
+    "https://www.coindesk.com/feed/",
+    "https://cointelegraph.com/rss",
+    "https://cryptoslate.com/feed/",
+    "https://decrypt.co/feed",
 ]
 
 # URL API کوین گکو برای دریافت قیمت
@@ -36,12 +32,11 @@ API_URL = "https://api.coingecko.com/api/v3/simple/price?ids={}&vs_currencies=us
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (NewsBot)"}
 
-# ترجمه به فارسی و بررسی صحت ترجمه
+# ترجمه به فارسی
 def translate_to_persian(text: str) -> str:
     translator = Translator()
     translated = translator.translate(text, src='en', dest='fa')
-    translated_text = translated.text
-    return translated_text
+    return translated.text
 
 # خواندن/نوشتن seen.txt
 def load_seen() -> set:
@@ -85,6 +80,22 @@ def extract_summary_from_url(url: str, max_chars: int = 420) -> str:
     except Exception:
         return "خلاصه در دسترس نیست."
 
+# استخراج تصویر از صفحه
+def extract_image_from_url(url: str) -> str:
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+
+        soup = BeautifulSoup(r.text, "html.parser")
+        img_tag = soup.find("img")  # پیدا کردن اولین تگ img
+        if img_tag:
+            img_url = img_tag.get("src")
+            img_url = urljoin(url, img_url)  # در صورت نیاز، آدرس کامل تصویر را می‌سازیم
+            return img_url
+        return ""
+    except Exception:
+        return ""
+
 # گرفتن اخبار از RSS
 def get_news_from_rss():
     items = []
@@ -102,8 +113,9 @@ def get_news_from_rss():
             continue
     return items
 
-# ارسال پیام به تلگرام
-def send_telegram_message(text: str):
+# ارسال پیام به تلگرام (شامل تصویر)
+def send_telegram_message_with_image(text: str, img_url: str):
+    # ارسال پیام متنی
     api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHANNEL_ID,
@@ -112,11 +124,27 @@ def send_telegram_message(text: str):
     }
 
     try:
-        response = requests.post(api_url, data=payload)
-        if response.status_code == 200:
-            print("پیام با موفقیت ارسال شد.")
+        # ابتدا پیام متنی را ارسال می‌کنیم
+        response_text = requests.post(api_url, data=payload)
+        if response_text.status_code == 200:
+            print("پیام متنی با موفقیت ارسال شد.")
         else:
-            print(f"خطا در ارسال پیام: {response.status_code}")
+            print(f"خطا در ارسال پیام متنی: {response_text.status_code}")
+
+        # سپس اگر تصویر وجود دارد، تصویر را ارسال می‌کنیم
+        if img_url:
+            print(f"در حال ارسال تصویر از URL: {img_url}")
+            img_response = requests.get(img_url)
+            if img_response.status_code == 200:  # اگر تصویر با موفقیت دانلود شد
+                files = {"photo": img_response.content}
+                # ارسال تصویر به تلگرام
+                response_img = requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto", data=payload, files=files)
+                if response_img.status_code == 200:
+                    print("تصویر با موفقیت ارسال شد.")
+                else:
+                    print(f"خطا در ارسال تصویر: {response_img.status_code}")
+            else:
+                print(f"خطا در دانلود تصویر: {img_url}")
     except requests.exceptions.RequestException as e:
         print(f"خطا در ارسال پیام به تلگرام: {e}")
 
@@ -172,17 +200,17 @@ def check_price_changes():
 
         # اگر تغییر قیمت بیش از 5 درصد در 4 ساعت باشد
         if time_diff < timedelta(hours=4) and abs(price_change_percentage) >= 5:
-            send_telegram_message(f"🔹 تغییر قیمت {coin} بیشتر از 5 درصد در 4 ساعت اخیر!\n\n"
+            send_telegram_message_with_image(f"🔹 تغییر قیمت {coin} بیشتر از 5 درصد در 4 ساعت اخیر!\n\n"
                                   f"قیمت قبلی: ${last_price}\n"
                                   f"قیمت جدید: ${current_price}\n"
-                                  f"تغییر: {price_change_percentage:.2f}%")
+                                  f"تغییر: {price_change_percentage:.2f}%", "")
 
         # اگر تغییر قیمت بیشتر از 10 درصد در یک روز باشد
         if time_diff >= timedelta(days=1) and abs(price_change_percentage) >= 10:
-            send_telegram_message(f"🔹 تغییر قیمت {coin} بیشتر از 10 درصد در 24 ساعت اخیر!\n\n"
+            send_telegram_message_with_image(f"🔹 تغییر قیمت {coin} بیشتر از 10 درصد در 24 ساعت اخیر!\n\n"
                                   f"قیمت قبلی: ${last_price}\n"
                                   f"قیمت جدید: ${current_price}\n"
-                                  f"تغییر: {price_change_percentage:.2f}%")
+                                  f"تغییر: {price_change_percentage:.2f}%", "")
 
         # بروزرسانی اطلاعات قیمت و زمان
         saved_prices[coin]['last_price'] = current_price
@@ -202,17 +230,3 @@ def job():
         link = item["link"]
         if link in load_seen():
             continue  # اگر خبر قبلا دیده شده، ادامه می‌دهیم
-
-        # ترجمه عنوان خبر
-        translated_title = translate_to_persian(title)
-        
-        # استخراج خلاصه از URL
-        summary = extract_summary_from_url(link)
-        
-        # ارسال خبر به تلگرام
-        send_telegram_message(f"📰 {translated_title}\n\n{summary}")
-        
-        # ذخیره URL
-        seen = load_seen()
-        seen.add(link)
-        save_seen(seen)
