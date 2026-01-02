@@ -39,6 +39,11 @@ def save_seen(seen: set):
         for url in sorted(seen):
             f.write(url + "\n")
 
+# فیلتر کلیدواژه
+def matches_keywords(title: str) -> bool:
+    t = (title or "").lower()
+    return any(k.lower() in t for k in COINS)
+
 # استخراج خلاصه از URL
 def extract_summary_from_url(url: str, max_chars: int = 420) -> str:
     try:
@@ -90,7 +95,7 @@ def get_news_from_rss():
                 title = getattr(entry, "title", "").strip()
                 link = getattr(entry, "link", "").strip()
 
-                if title and link:
+                if title and link and matches_keywords(title):
                     items.append({"title": title, "link": link})
 
         except Exception:
@@ -107,10 +112,7 @@ def send_telegram_message_with_image(text: str, img_url: str):
     }
     files = {"photo": requests.get(img_url).content} if img_url else {}
     r = requests.post(api_url, data=payload, files=files, timeout=20)
-    if r.status_code == 200:
-        print(f"✅ پیام ارسال شد: {text}")
-    else:
-        print(f"❌ خطا در ارسال پیام: {r.status_code} - {r.text}")
+    r.raise_for_status()
 
 # اجرای ربات
 def job():
@@ -125,7 +127,7 @@ def job():
         url = item["link"]
         title = item["title"]
 
-        if url in seen:
+        if url in seen:  # اگر خبر قبلاً ارسال شده، ادامه بده
             continue
 
         summary = extract_summary_from_url(url)
@@ -137,12 +139,11 @@ def job():
         # ارسال پیام به تلگرام همراه با تصویر
         message = (
             f"🔹 <b>{title}</b>\n\n"
-            f"{translated_summary}\n\n"
-            f"🔗 <a href='{url}'>ادامه خبر</a>"
+            f"{translated_summary}"
         )
 
         send_telegram_message_with_image(message, img_url)
-        seen.add(url)
+        seen.add(url)  # ذخیره URL برای جلوگیری از تکرار در آینده
         sent += 1
         time.sleep(1)
 
