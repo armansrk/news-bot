@@ -1,11 +1,32 @@
-{
-  "bitcoin": {
-    "last_price": 50000,
-    "last_check_time": "2026-01-02 12:00:00"
-  },
-  "ethereum": {
-    "last_price": 4000,
-    "last_check_time": "2026-01-02 12:00:00"
-  },
-  ...
-}
+import json
+import os
+from datetime import datetime
+
+# فایل برای ذخیره قیمت‌ها و زمان بررسی ارزها
+prices_file = "prices.json"
+
+# بارگذاری قیمت‌ها از فایل prices.json
+def load_prices():
+    if os.path.exists(prices_file):  # اگر فایل وجود داشت
+        with open(prices_file, 'r') as file:  # خواندن اطلاعات از فایل
+            return json.load(file)  # تبدیل اطلاعات به دیکشنری
+    return {}  # اگر فایل وجود نداشت، یک دیکشنری خالی باز می‌گرداند
+
+# ذخیره قیمت‌ها به فایل prices.json
+def save_prices(prices):
+    with open(prices_file, 'w') as file:  # نوشتن اطلاعات به فایل
+        json.dump(prices, file, indent=4)  # ذخیره اطلاعات با فرمت JSON
+
+# مثال ذخیره قیمت‌ها
+def example_save_price():
+    prices = {
+        "bitcoin": {
+            "last_price": 50000,
+            "last_check_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # زمان فعلی
+        },
+        "ethereum": {
+            "last_price": 4000,
+            "last_check_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # زمان فعلی
+        }
+    }
+    save_prices(prices)  # ذخیره قیمت‌ها در فایل
