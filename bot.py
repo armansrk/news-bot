@@ -115,19 +115,36 @@ def get_news_from_rss():
 
 # ارسال پیام به تلگرام (شامل تصویر)
 def send_telegram_message_with_image(text: str, img_url: str):
+    # ارسال پیام متنی
     api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHANNEL_ID,
         "text": text,
         "parse_mode": "HTML"
     }
+
     try:
-        # در صورتی که تصویر وجود دارد
-        if img_url:
-            files = {"photo": requests.get(img_url).content}
-            requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto", data=payload, files=files)
+        # ابتدا پیام متنی را ارسال می‌کنیم
+        response_text = requests.post(api_url, data=payload)
+        if response_text.status_code == 200:
+            print("پیام متنی با موفقیت ارسال شد.")
         else:
-            requests.post(api_url, data=payload)
+            print(f"خطا در ارسال پیام متنی: {response_text.status_code}")
+
+        # سپس اگر تصویر وجود دارد، تصویر را ارسال می‌کنیم
+        if img_url:
+            print(f"در حال ارسال تصویر از URL: {img_url}")
+            img_response = requests.get(img_url)
+            if img_response.status_code == 200:  # اگر تصویر با موفقیت دانلود شد
+                files = {"photo": img_response.content}
+                # ارسال تصویر به تلگرام
+                response_img = requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto", data=payload, files=files)
+                if response_img.status_code == 200:
+                    print("تصویر با موفقیت ارسال شد.")
+                else:
+                    print(f"خطا در ارسال تصویر: {response_img.status_code}")
+            else:
+                print(f"خطا در دانلود تصویر: {img_url}")
     except requests.exceptions.RequestException as e:
         print(f"خطا در ارسال پیام به تلگرام: {e}")
 
@@ -206,39 +223,17 @@ def job():
         print("خطا: توکن ربات یا شناسه کانال مشخص نشده است.")
         return  # اجرای کد متوقف می‌شود اگر توکن یا شناسه کانال وجود نداشته باشد
 
-    # بارگذاری لینک‌های ارسال‌شده قبلی
-    seen = load_seen()
-
-    # دریافت اخبار از RSS
+    # گرفتن اخبار از RSS
     news = get_news_from_rss()
-    
-    for entry in news:
-        title = entry["title"]
-        link = entry["link"]
-        
-        # اگر لینک قبلا ارسال شده است، آن را نادیده بگیرید
-        if link in seen:
-            continue
-        
-        # ترجمه عنوان به فارسی
-        translated_title = translate_to_persian(title)
-        
-        # استخراج خلاصه و تصویر از لینک
+    for item in news:
+        title = item['title']
+        link = item['link']
         summary = extract_summary_from_url(link)
         img_url = extract_image_from_url(link)
-        
-        # ارسال اخبار به تلگرام
-        send_telegram_message_with_image(f"<b>{translated_title}</b>\n\n{summary}\n\n{link}", img_url)
-        
-        # ذخیره لینک ارسال‌شده در فایل
-        seen.add(link)
+        send_telegram_message_with_image(f"<b>{title}</b>\n{summary}\n\n<a href='{link}'>بیشتر بخوانید</a>", img_url)
 
-    save_seen(seen)
-    
     # بررسی تغییرات قیمت ارزها
     check_price_changes()
 
-# فراخوانی تابع job در یک دوره زمانی
-while True:
+if __name__ == "__main__":
     job()
-    time.sleep(1800)  # اجرای هر 30 دقیقه یک‌بار
