@@ -4,6 +4,7 @@ import requests
 import feedparser
 from googletrans import Translator
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
 # تنظیمات
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -68,6 +69,22 @@ def extract_summary_from_url(url: str, max_chars: int = 420) -> str:
     except Exception:
         return "خلاصه در دسترس نیست."
 
+# استخراج تصویر از صفحه
+def extract_image_from_url(url: str) -> str:
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+
+        soup = BeautifulSoup(r.text, "html.parser")
+        img_tag = soup.find("img")  # پیدا کردن اولین تگ img
+        if img_tag:
+            img_url = img_tag.get("src")
+            img_url = urljoin(url, img_url)  # در صورت نیاز، آدرس کامل تصویر را می‌سازیم
+            return img_url
+        return ""
+    except Exception:
+        return ""
+
 # گرفتن اخبار از RSS
 def get_news_from_rss():
     items = []
@@ -85,16 +102,16 @@ def get_news_from_rss():
             continue
     return items
 
-# ارسال پیام به تلگرام
-def send_telegram_message(html_text: str):
-    api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+# ارسال پیام به تلگرام (شامل تصویر)
+def send_telegram_message_with_image(text: str, img_url: str):
+    api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
     payload = {
         "chat_id": CHANNEL_ID,
-        "text": html_text,
-        "parse_mode": "HTML",
-        "disable_web_page_preview": False
+        "caption": text,
+        "parse_mode": "HTML"
     }
-    r = requests.post(api_url, json=payload, timeout=20)
+    files = {"photo": requests.get(img_url).content} if img_url else {}
+    r = requests.post(api_url, data=payload, files=files, timeout=20)
     r.raise_for_status()
 
 # اجرای ربات
@@ -116,13 +133,17 @@ def job():
         summary = extract_summary_from_url(url)
         translated_summary = translate_to_persian(summary)
 
+        # استخراج تصویر از خبر
+        img_url = extract_image_from_url(url)
+
+        # ارسال پیام به تلگرام همراه با تصویر
         message = (
             f"🔹 <b>{title}</b>\n\n"
             f"{translated_summary}\n\n"
             f"🔗 <a href='{url}'>ادامه خبر</a>"
         )
 
-        send_telegram_message(message)
+        send_telegram_message_with_image(message, img_url)
         seen.add(url)
         sent += 1
         time.sleep(1)
