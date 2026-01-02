@@ -201,7 +201,10 @@ def check_price_changes():
     
     save_prices(saved_prices)
 
-# اجرای ربات
 def job():
     if not BOT_TOKEN or not CHANNEL_ID:
-       
+        print("خطا: توکن ربات یا شناسه کانال مشخص نشده است.")
+        return  # اجرای کد متوقف می‌شود اگر توکن یا شناسه کانال وجود نداشته باشد
+
+    # باقی کدهای مربوط به اجرای ربات
+
