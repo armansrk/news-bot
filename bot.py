@@ -115,16 +115,19 @@ def get_news_from_rss():
 
 # ارسال پیام به تلگرام (شامل تصویر)
 def send_telegram_message_with_image(text: str, img_url: str):
-    api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
+    api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHANNEL_ID,
-        "caption": text,
+        "text": text,
         "parse_mode": "HTML"
     }
     try:
-        files = {"photo": requests.get(img_url).content} if img_url else {}
-        r = requests.post(api_url, data=payload, files=files, timeout=20)
-        r.raise_for_status()
+        # در صورتی که تصویر وجود دارد
+        if img_url:
+            files = {"photo": requests.get(img_url).content}
+            requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto", data=payload, files=files)
+        else:
+            requests.post(api_url, data=payload)
     except requests.exceptions.RequestException as e:
         print(f"خطا در ارسال پیام به تلگرام: {e}")
 
@@ -137,8 +140,12 @@ def get_current_prices():
 # بارگذاری قیمت‌ها از فایل
 def load_prices():
     if os.path.exists(prices_file):
-        with open(prices_file, 'r') as file:
-            return json.load(file)
+        try:
+            with open(prices_file, 'r') as file:
+                return json.load(file)
+        except json.JSONDecodeError:
+            print(f"خطا در بارگذاری فایل {prices_file}. داده نامعتبر است.")
+            return {}  # بازگشت داده خالی در صورت خطا
     return {}
 
 # ذخیره قیمت‌ها به فایل
@@ -227,19 +234,9 @@ def job():
                 f"🔹 <b>{translated_title}</b>\n\n"
                 f"{translated_summary}"
             )
-
             send_telegram_message_with_image(message, img_url)
-            seen.add(url)  # ذخیره URL برای جلوگیری از تکرار در آینده
+            seen.add(url)
             save_seen(seen)
 
-            print("✅ خبر ارسال شد")
-    
-    # بررسی تغییرات قیمت
-    check_price_changes()
-
-    # زمان انتظار قبل از اجرای دوباره
-    time.sleep(1800)  # 30 دقیقه انتظار
-
 if __name__ == "__main__":
-    while True:
-        job()
+    job()
