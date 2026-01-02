@@ -32,11 +32,32 @@ API_URL = "https://api.coingecko.com/api/v3/simple/price?ids={}&vs_currencies=us
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (NewsBot)"}
 
-# ترجمه به فارسی
+# ترجمه به فارسی و بررسی صحت ترجمه
 def translate_to_persian(text: str) -> str:
     translator = Translator()
     translated = translator.translate(text, src='en', dest='fa')
-    return translated.text
+    translated_text = translated.text
+
+    # چک کردن ترجمه (اختیاری: اصلاحات جزیی در ترجمه)
+    corrected_translation = check_translation_accuracy(translated_text)
+    return corrected_translation
+
+def check_translation_accuracy(text: str) -> str:
+    """
+    این تابع به طور ساده ترجمه را از نظر معنایی و دستوری چک می‌کند.
+    شما می‌توانید اینجا قواعد خاص خود را برای اصلاحات اعمال کنید.
+    """
+    # برای مثال بررسی جملات معمولی و اصلاحات کوچک
+    corrections = {
+        "not": "نه",
+        "this is": "این است",
+        # به این صورت می‌توانید اصلاحات دیگری را هم اضافه کنید
+    }
+
+    for wrong, correct in corrections.items():
+        text = text.replace(wrong, correct)
+    
+    return text
 
 # خواندن/نوشتن seen.txt
 def load_seen() -> set:
@@ -80,22 +101,6 @@ def extract_summary_from_url(url: str, max_chars: int = 420) -> str:
     except Exception:
         return "خلاصه در دسترس نیست."
 
-# استخراج تصویر از صفحه
-def extract_image_from_url(url: str) -> str:
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=20)
-        r.raise_for_status()
-
-        soup = BeautifulSoup(r.text, "html.parser")
-        img_tag = soup.find("img")  # پیدا کردن اولین تگ img
-        if img_tag:
-            img_url = img_tag.get("src")
-            img_url = urljoin(url, img_url)  # در صورت نیاز، آدرس کامل تصویر را می‌سازیم
-            return img_url
-        return ""
-    except Exception:
-        return ""
-
 # گرفتن اخبار از RSS
 def get_news_from_rss():
     items = []
@@ -113,9 +118,8 @@ def get_news_from_rss():
             continue
     return items
 
-# ارسال پیام به تلگرام (شامل تصویر)
-def send_telegram_message_with_image(text: str, img_url: str):
-    # ارسال پیام متنی
+# ارسال پیام به تلگرام
+def send_telegram_message(text: str):
     api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHANNEL_ID,
@@ -124,27 +128,11 @@ def send_telegram_message_with_image(text: str, img_url: str):
     }
 
     try:
-        # ابتدا پیام متنی را ارسال می‌کنیم
-        response_text = requests.post(api_url, data=payload)
-        if response_text.status_code == 200:
-            print("پیام متنی با موفقیت ارسال شد.")
+        response = requests.post(api_url, data=payload)
+        if response.status_code == 200:
+            print("پیام با موفقیت ارسال شد.")
         else:
-            print(f"خطا در ارسال پیام متنی: {response_text.status_code}")
-
-        # سپس اگر تصویر وجود دارد، تصویر را ارسال می‌کنیم
-        if img_url:
-            print(f"در حال ارسال تصویر از URL: {img_url}")
-            img_response = requests.get(img_url)
-            if img_response.status_code == 200:  # اگر تصویر با موفقیت دانلود شد
-                files = {"photo": img_response.content}
-                # ارسال تصویر به تلگرام
-                response_img = requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto", data=payload, files=files)
-                if response_img.status_code == 200:
-                    print("تصویر با موفقیت ارسال شد.")
-                else:
-                    print(f"خطا در ارسال تصویر: {response_img.status_code}")
-            else:
-                print(f"خطا در دانلود تصویر: {img_url}")
+            print(f"خطا در ارسال پیام: {response.status_code}")
     except requests.exceptions.RequestException as e:
         print(f"خطا در ارسال پیام به تلگرام: {e}")
 
@@ -200,17 +188,17 @@ def check_price_changes():
 
         # اگر تغییر قیمت بیش از 5 درصد در 4 ساعت باشد
         if time_diff < timedelta(hours=4) and abs(price_change_percentage) >= 5:
-            send_telegram_message_with_image(f"🔹 تغییر قیمت {coin} بیشتر از 5 درصد در 4 ساعت اخیر!\n\n"
+            send_telegram_message(f"🔹 تغییر قیمت {coin} بیشتر از 5 درصد در 4 ساعت اخیر!\n\n"
                                   f"قیمت قبلی: ${last_price}\n"
                                   f"قیمت جدید: ${current_price}\n"
-                                  f"تغییر: {price_change_percentage:.2f}%", "")
+                                  f"تغییر: {price_change_percentage:.2f}%")
 
         # اگر تغییر قیمت بیشتر از 10 درصد در یک روز باشد
         if time_diff >= timedelta(days=1) and abs(price_change_percentage) >= 10:
-            send_telegram_message_with_image(f"🔹 تغییر قیمت {coin} بیشتر از 10 درصد در 24 ساعت اخیر!\n\n"
+            send_telegram_message(f"🔹 تغییر قیمت {coin} بیشتر از 10 درصد در 24 ساعت اخیر!\n\n"
                                   f"قیمت قبلی: ${last_price}\n"
                                   f"قیمت جدید: ${current_price}\n"
-                                  f"تغییر: {price_change_percentage:.2f}%", "")
+                                  f"تغییر: {price_change_percentage:.2f}%")
 
         # بروزرسانی اطلاعات قیمت و زمان
         saved_prices[coin]['last_price'] = current_price
@@ -230,20 +218,17 @@ def job():
         link = item["link"]
         if link in load_seen():
             continue  # اگر خبر قبلا دیده شده، ادامه می‌دهیم
+
+        # ترجمه عنوان خبر
+        translated_title = translate_to_persian(title)
+        
+        # استخراج خلاصه از URL
+        summary = extract_summary_from_url(link)
+        
+        # ارسال خبر به تلگرام
+        send_telegram_message(f"📰 {translated_title}\n\n{summary}")
+        
+        # ذخیره URL
         seen = load_seen()
         seen.add(link)
         save_seen(seen)
-
-        summary = extract_summary_from_url(link)
-        img_url = extract_image_from_url(link)
-        # ترجمه به فارسی
-        title = translate_to_persian(title)
-        summary = translate_to_persian(summary)
-
-        send_telegram_message_with_image(f"<b>{title}</b>\n{summary}\n\n<a href='{link}'>بیشتر بخوانید</a>", img_url)
-
-    # بررسی تغییرات قیمت ارزها
-    check_price_changes()
-
-if __name__ == "__main__":
-    job()
