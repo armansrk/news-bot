@@ -39,11 +39,6 @@ def save_seen(seen: set):
         for url in sorted(seen):
             f.write(url + "\n")
 
-# فیلتر کلیدواژه
-def matches_keywords(title: str) -> bool:
-    t = (title or "").lower()
-    return any(k.lower() in t for k in COINS)
-
 # استخراج خلاصه از URL
 def extract_summary_from_url(url: str, max_chars: int = 420) -> str:
     try:
@@ -95,7 +90,7 @@ def get_news_from_rss():
                 title = getattr(entry, "title", "").strip()
                 link = getattr(entry, "link", "").strip()
 
-                if title and link and matches_keywords(title):
+                if title and link:
                     items.append({"title": title, "link": link})
 
         except Exception:
@@ -112,7 +107,10 @@ def send_telegram_message_with_image(text: str, img_url: str):
     }
     files = {"photo": requests.get(img_url).content} if img_url else {}
     r = requests.post(api_url, data=payload, files=files, timeout=20)
-    r.raise_for_status()
+    if r.status_code == 200:
+        print(f"✅ پیام ارسال شد: {text}")
+    else:
+        print(f"❌ خطا در ارسال پیام: {r.status_code} - {r.text}")
 
 # اجرای ربات
 def job():
