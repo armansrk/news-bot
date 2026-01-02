@@ -123,13 +123,15 @@ def job():
     seen = load_seen()
     news = get_news_from_rss()
 
-    sent = 0
-    for item in news:
+    if news:
+        # فقط یک پست ارسال می‌شود
+        item = news[0]
         url = item["link"]
         title = item["title"]
 
         if url in seen:  # اگر خبر قبلاً ارسال شده، ادامه بده
-            continue
+            print("خبر قبلاً ارسال شده است.")
+            return
 
         # استخراج خلاصه از URL
         summary = extract_summary_from_url(url)
@@ -149,12 +151,17 @@ def job():
 
         send_telegram_message_with_image(message, img_url)
         seen.add(url)  # ذخیره URL برای جلوگیری از تکرار در آینده
-        sent += 1
-        time.sleep(1)
+        save_seen(seen)
 
-    save_seen(seen)
-    print(f"✅ {sent} خبر ارسال شد (بدون تکرار)")
+        print("✅ خبر ارسال شد")
+
+    else:
+        print("خبر جدیدی برای ارسال وجود ندارد.")
+
+    # زمان انتظار قبل از اجرای دوباره ربات (مثلاً نیم ساعت)
+    time.sleep(1800)  # 1800 ثانیه معادل 30 دقیقه
 
 # اجرا
 if __name__ == "__main__":
-    job()
+    while True:  # این بخش باعث می‌شود ربات به طور مداوم اجرا شود
+        job()
