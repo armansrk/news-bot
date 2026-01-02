@@ -204,39 +204,4 @@ def check_price_changes():
 # اجرای ربات
 def job():
     if not BOT_TOKEN or not CHANNEL_ID:
-        raise RuntimeError("BOT_TOKEN و CHANNEL_ID را در GitHub Secrets ست کن.")
-    
-    # دریافت اخبار
-    seen = load_seen()
-    news = get_news_from_rss()
-
-    if news:
-        # فقط یک پست ارسال می‌شود
-        item = news[0]
-        url = item["link"]
-        title = item["title"]
-
-        if url in seen:  # اگر خبر قبلاً ارسال شده، ادامه بده
-            print("خبر قبلاً ارسال شده است.")
-        else:
-            # استخراج خلاصه از URL
-            summary = extract_summary_from_url(url)
-            translated_summary = translate_to_persian(summary)
-
-            # استخراج تصویر از خبر
-            img_url = extract_image_from_url(url)
-
-            # ترجمه تیتر
-            translated_title = translate_to_persian(title)
-
-            # ارسال پیام به تلگرام همراه با تصویر
-            message = (
-                f"🔹 <b>{translated_title}</b>\n\n"
-                f"{translated_summary}"
-            )
-            send_telegram_message_with_image(message, img_url)
-            seen.add(url)
-            save_seen(seen)
-
-if __name__ == "__main__":
-    job()
+       
