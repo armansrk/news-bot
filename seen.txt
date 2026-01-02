@@ -1,22 +1,52 @@
-https://arzdigital.com/blog/bitcoin-90k-rejection-is-btc-digital-gold-narrative-losing-to-bonds/
-https://arzdigital.com/blog/bitcoin-performance-trump-vs-biden-comparison/
-https://arzdigital.com/blog/eth-staking-entry-queue-surpasses-exit/
-https://arzdigital.com/blog/no-90k-bitcoin-futures-open-interest-8-month-low/
-https://arzdigital.com/blog/price-predictions-12-29-spx-dxy-btc-eth-bnb-xrp-sol-doge-ada-bch/
-https://arzdigital.com/blog/why-is-the-crypto-market-up-today/
-https://arzdigital.com/blog/xrp-price-breakdown-risk-new-years/
-https://arzdigital.com/blog/xrp-supply-exchanges-8-year-lows-2026-price-rally/
+import os
+
+# تابع برای بارگذاری مطالب دیده شده از فایل
 def load_seen() -> set:
     try:
+        # بررسی اینکه آیا فایل موجود است یا خیر
         if not os.path.exists("seen.txt"):
             return set()
+        
+        # خواندن مطالب از فایل
         with open("seen.txt", "r", encoding="utf-8") as f:
-            seen = set(line.strip() for line in f if line.strip())
+            seen = set(line.strip() for line in f if line.strip())  # حذف خطوط خالی
         print(f"مطالب دیده شده: {seen}")
         return seen
     except Exception as e:
         print(f"خطا در بارگذاری فایل: {e}")
         return set()
 
+# تابع برای ذخیره URLهای جدید به فایل
+def save_seen(seen: set) -> None:
+    try:
+        with open("seen.txt", "w", encoding="utf-8") as f:
+            for url in sorted(seen):
+                f.write(url + "\n")
+        print("مطالب جدید ذخیره شدند.")
+    except Exception as e:
+        print(f"خطا در ذخیره فایل: {e}")
+
+# تابع برای شبیه‌سازی ارسال اخبار به تلگرام (برای تست)
+def send_to_telegram(message: str):
+    print(f"ارسال به تلگرام: {message}")
+
 # تست بارگذاری مطالب دیده شده
-seen = load_seen()
+def test_load_seen():
+    seen = load_seen()
+    print(f"مطالب دیده شده بارگذاری شده: {seen}")
+
+# اضافه کردن یک خبر جدید به مجموعه‌ی دیده شده
+def add_new_article_to_seen(new_url: str):
+    seen = load_seen()
+    if new_url not in seen:
+        seen.add(new_url)  # افزودن URL جدید
+        save_seen(seen)  # ذخیره‌ی URLهای به روز شده
+        send_to_telegram(f"خبر جدید اضافه شد: {new_url}")
+    else:
+        print("این خبر قبلاً دیده شده است.")
+
+# شبیه‌سازی اضافه کردن اخبار جدید
+add_new_article_to_seen("https://arzdigital.com/blog/bitcoin-performance-trump-vs-biden-comparison/")
+
+# تست بارگذاری مطالب دیده شده
+test_load_seen()
