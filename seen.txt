@@ -1,52 +1,40 @@
-import os
-
-# تابع برای بارگذاری مطالب دیده شده از فایل
-def load_seen() -> set:
-    try:
-        # بررسی اینکه آیا فایل موجود است یا خیر
-        if not os.path.exists("seen.txt"):
-            return set()
-        
-        # خواندن مطالب از فایل
-        with open("seen.txt", "r", encoding="utf-8") as f:
-            seen = set(line.strip() for line in f if line.strip())  # حذف خطوط خالی
-        print(f"مطالب دیده شده: {seen}")
-        return seen
-    except Exception as e:
-        print(f"خطا در بارگذاری فایل: {e}")
-        return set()
-
-# تابع برای ذخیره URLهای جدید به فایل
-def save_seen(seen: set) -> None:
-    try:
-        with open("seen.txt", "w", encoding="utf-8") as f:
-            for url in sorted(seen):
-                f.write(url + "\n")
-        print("مطالب جدید ذخیره شدند.")
-    except Exception as e:
-        print(f"خطا در ذخیره فایل: {e}")
-
-# تابع برای شبیه‌سازی ارسال اخبار به تلگرام (برای تست)
-def send_to_telegram(message: str):
-    print(f"ارسال به تلگرام: {message}")
-
-# تست بارگذاری مطالب دیده شده
-def test_load_seen():
-    seen = load_seen()
-    print(f"مطالب دیده شده بارگذاری شده: {seen}")
-
 # اضافه کردن یک خبر جدید به مجموعه‌ی دیده شده
-def add_new_article_to_seen(new_url: str):
-    seen = load_seen()
-    if new_url not in seen:
-        seen.add(new_url)  # افزودن URL جدید
-        save_seen(seen)  # ذخیره‌ی URLهای به روز شده
-        send_to_telegram(f"خبر جدید اضافه شد: {new_url}")
-    else:
-        print("این خبر قبلاً دیده شده است.")
-
+# بررسی اینکه آیا فایل موجود است یا خیر
+# تابع برای بارگذاری مطالب دیده شده از فایل
+# تابع برای ذخیره URLهای جدید به فایل
+# تابع برای شبیه‌سازی ارسال اخبار به تلگرام (برای تست)
+# تست بارگذاری مطالب دیده شده
+# خواندن مطالب از فایل
 # شبیه‌سازی اضافه کردن اخبار جدید
 add_new_article_to_seen("https://arzdigital.com/blog/bitcoin-performance-trump-vs-biden-comparison/")
-
-# تست بارگذاری مطالب دیده شده
+def add_new_article_to_seen(new_url: str):
+def load_seen() -> set:
+def save_seen(seen: set) -> None:
+def send_to_telegram(message: str):
+def test_load_seen():
+else:
+except Exception as e:
+f.write(url + "\n")
+for url in sorted(seen):
+https://cointelegraph.com/news/bitcoin-bulls-charge-90k-traders-cme-gap-for-btc-price-dip?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound
+if new_url not in seen:
+if not os.path.exists("seen.txt"):
+import os
+print("این خبر قبلاً دیده شده است.")
+print("مطالب جدید ذخیره شدند.")
+print(f"ارسال به تلگرام: {message}")
+print(f"خطا در بارگذاری فایل: {e}")
+print(f"خطا در ذخیره فایل: {e}")
+print(f"مطالب دیده شده بارگذاری شده: {seen}")
+print(f"مطالب دیده شده: {seen}")
+return seen
+return set()
+save_seen(seen)  # ذخیره‌ی URLهای به روز شده
+seen = load_seen()
+seen = set(line.strip() for line in f if line.strip())  # حذف خطوط خالی
+seen.add(new_url)  # افزودن URL جدید
+send_to_telegram(f"خبر جدید اضافه شد: {new_url}")
 test_load_seen()
+try:
+with open("seen.txt", "r", encoding="utf-8") as f:
+with open("seen.txt", "w", encoding="utf-8") as f:
