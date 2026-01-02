@@ -200,11 +200,42 @@ def check_price_changes():
         saved_prices[coin]['last_check_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     save_prices(saved_prices)
-
 def job():
     if not BOT_TOKEN or not CHANNEL_ID:
         print("خطا: توکن ربات یا شناسه کانال مشخص نشده است.")
         return  # اجرای کد متوقف می‌شود اگر توکن یا شناسه کانال وجود نداشته باشد
 
     # باقی کدهای مربوط به اجرای ربات
+    seen = load_seen()
+    news = get_news_from_rss()
+    for entry in news:
+        title = entry["title"]
+        link = entry["link"]
+        
+        # اگر لینک قبلا ارسال شده است، آن را نادیده بگیرید
+        if link in seen:
+            continue
+        
+        # ترجمه عنوان به فارسی
+        translated_title = translate_to_persian(title)
+        
+        # استخراج خلاصه و تصویر از لینک
+        summary = extract_summary_from_url(link)
+        img_url = extract_image_from_url(link)
+        
+        # ارسال اخبار به تلگرام
+        send_telegram_message_with_image(f"<b>{translated_title}</b>\n\n{summary}\n\n{link}", img_url)
+        
+        # ذخیره لینک ارسال‌شده در فایل
+        seen.add(link)
+
+    save_seen(seen)
+    
+    # بررسی تغییرات قیمت ارزها
+    check_price_changes()
+
+# فراخوانی تابع job در یک دوره زمانی
+while True:
+    job()
+    time.sleep(1800)  # اجرای هر 30 دقیقه یک‌بار
 
